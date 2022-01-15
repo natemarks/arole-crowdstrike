@@ -1,20 +1,43 @@
 ---
-- name: Download makemine tarball
-  get_url:
-    url: https://github.com/natemarks/makemine/releases/download/v{{ version }}/makemine_{{ version }}_linux_amd64.tar.gz
-    dest: ~/makemine_{{ version }}_linux_amd64.tar.gz
-    checksum: sha1:{{ sha256 }}
-    mode: '0644'
-
-- name: Extract /tmp/makemine_{{ version }}_linux_amd64.tar.gz in /tmp
-  ansible.builtin.unarchive:
-    src: "{{ ansible_env.HOME }}/makemine_{{ version }}_linux_amd64.tar.gz"
-    dest: "{{ ansible_env.HOME }}"
-
-- name: Copy makemine to /usr/local/bin
-  become: yes
-  ansible.builtin.copy:
-    src: "{{ ansible_env.HOME }}/makemine"
-    dest: /usr/local/bin/makemine
+- name: Create crowdstrike extract directory
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
     mode: '0755'
-  
+  loop:
+    - '{{ download }}'
+    - '{{ extract }}'
+
+- name: Download crowdstrike package
+  become: no
+  command: aws s3 cp {{ s3_uri }} {{ extract }} --quiet
+  environment:
+    AWS_ACCESS_KEY_ID: '{{ aws_access_key_id }}'
+    AWS_SECRET_ACCESS_KEY: '{{ aws_secret_access_key }}'
+  register: csdl
+  args:
+    creates: '{{ extract }}/{{ installer }}'
+
+- name: Download output
+  debug:
+    msg: 'crowdstrike bucket: {{ csdl.stdout }}'
+
+- name: Check if crowdstrike is installed
+  command: dpkg-query -W falcon-sensor*
+  register: csinst
+  failed_when: csinst.rc > 1
+  changed_when: false
+
+- name: Install crowstrike
+  # installer won't run in docker
+  tags: molecule-notest
+  become: yes
+  apt: deb="{{ extract }}/{{ installer }}"
+  when: csinst.rc != 0
+
+- name: Configure crowdstrike cid
+  become: yes
+  command: /opt/CrowdStrike/falconctl -s --cid={{ cid }}
+  register: cscid
+  changed_when: false
+  when: csinst.rc != 0

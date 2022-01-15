@@ -1,4 +1,4 @@
 ---
-# defaults file for ansible-role-bash
-version: "0.0.5"
-sha256: "39dfe437f57a8587262168f617638b9354535eea"
+download: "{{ ansible_env.HOME }}/.crowdstrike_downloads"
+extract: "{{ download }}/crowdstrike"
+installer: "falcon-sensor_6.24.0-12104_amd64.deb"
