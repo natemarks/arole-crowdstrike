@@ -1,4 +1,4 @@
 ---
 download: "{{ ansible_env.HOME }}/.crowdstrike_downloads"
 extract: "{{ download }}/crowdstrike"
-installer: "falcon-sensor_6.24.0-12104_amd64.deb"
+installer: "falcon-sensor_6.43.0-14005_amd64.deb"
